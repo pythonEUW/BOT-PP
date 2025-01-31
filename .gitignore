@@ -1,0 +1,12 @@
+# Node.js
+/node_modules/
+
+# .env
+/.env
+
+# log
+*.log
+
+/config.json
+
+/tmp/
