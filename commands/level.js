@@ -4,7 +4,7 @@ module.exports = {
     name: 'level',
     description: 'Obtenir le level d\'un joueur',
     async execute(message, args, RIOT_API_KEY) {
-        if (args.length < 3) {
+        if (args.length < 2) {
             return message.reply('Usage : `!level <pseudo> <tagLine>`');
         }
 
@@ -22,10 +22,10 @@ module.exports = {
             });
             const level = levelRes.data.summonerLevel;
 
-            let response = `🎮 **Level**: ${level}LP)\n`;
+            let response = `🎮 **Level**: ${level}\n`;
 
             message.reply(response);
-            console.log(`🎮 **Level**: ${level}LP)\n`);
+            console.log(`🎮 **Level**: ${level}\n`);
         } catch (error) {
             console.error(error);
             message.reply('❌ Erreur : Joueur non trouvé ou problème avec l\'API Riot.');
