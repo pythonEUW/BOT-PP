@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 
 const client = new Client({
-    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent]
+    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent,GatewayIntentBits.GuildMembers,GatewayIntentBits.GuildVoiceStates]
 });
 
 const RIOT_API_KEY = process.env.RIOT_API_KEY;
