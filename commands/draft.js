@@ -69,7 +69,7 @@ module.exports = {
         let turn = 1;
 
         const filter = (interaction) => interaction.customId === 'draft_select' && interaction.user.id === currentCaptain.id;
-        const collector = message.channel.createMessageComponentCollector({ filter, time: 60000 });
+        const collector = message.channel.createMessageComponentCollector({ filter, time: 60000*5 });
 
         collector.on('collect', async (interaction) => {
             const selectedId = interaction.values[0];
