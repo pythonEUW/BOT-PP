@@ -13,23 +13,44 @@ module.exports = {
         }
 
         const [captain1, captain2] = message.mentions.members.map(member => member);
-        
         const voiceChannel = message.member.voice.channel;
+
         if (!voiceChannel) {
             return message.reply("❌ Tu dois être dans un salon vocal pour lancer un draft.");
         }
 
         const members = voiceChannel.members.filter(member => !member.user.bot && member.id !== captain1.id && member.id !== captain2.id);
         
-
-        console.log(members.size);
         if (members.size < 2) {
             return message.reply("❌ Il faut au moins **2 joueurs** (hors capitaines) pour commencer un draft.");
         }
 
-        let availablePlayers = members.map(member => ({ label: member.user.username, value: member.id }));
+        // Vérification et création des rôles si inexistants
+        let roleTeam1 = message.guild.roles.cache.find(role => role.name === "team 1");
+        let roleTeam2 = message.guild.roles.cache.find(role => role.name === "team 2");
+
+        if (!roleTeam1) {
+            roleTeam1 = await message.guild.roles.create({
+                name: "team 1",
+                color: "BLUE",
+                reason: "Création du rôle pour le draft"
+            });
+        }
+        if (!roleTeam2) {
+            roleTeam2 = await message.guild.roles.create({
+                name: "team 2",
+                color: "RED",
+                reason: "Création du rôle pour le draft"
+            });
+        }
+
+        let availablePlayers = members.map(member => ({ label: member.user.displayName, value: member.id }));
         let team1 = [];
         let team2 = [];
+
+        // Ajoute les capitaines aux rôles correspondants
+        await captain1.roles.add(roleTeam1);
+        await captain2.roles.add(roleTeam2);
 
         const draftEmbed = new EmbedBuilder()
             .setTitle("🏆 Draft League of Legends")
@@ -53,6 +74,7 @@ module.exports = {
         collector.on('collect', async (interaction) => {
             const selectedId = interaction.values[0];
             const selectedPlayer = availablePlayers.find(player => player.value === selectedId);
+            const selectedMember = message.guild.members.cache.get(selectedId);
 
             availablePlayers = availablePlayers.filter(player => player.value !== selectedId);
             selectMenu.setOptions(availablePlayers);
@@ -60,9 +82,11 @@ module.exports = {
 
             if (turn % 2 === 1) {
                 team1.push(selectedPlayer.label);
+                await selectedMember.roles.add(roleTeam1);
                 currentCaptain = captain2;
             } else {
                 team2.push(selectedPlayer.label);
+                await selectedMember.roles.add(roleTeam2);
                 currentCaptain = captain1;
             }
 
