@@ -20,12 +20,12 @@ module.exports = {
         }
 
         const members = voiceChannel.members.filter(member => !member.user.bot && member.id !== captain1.id && member.id !== captain2.id);
-        
+
         if (members.size < 2) {
             return message.reply("❌ Il faut au moins **2 joueurs** (hors capitaines) pour commencer un draft.");
         }
 
-        // Vérification et création des rôles si inexistants
+        // Création des rôles si nécessaires
         let roleTeam1 = message.guild.roles.cache.find(role => role.name === "team 1");
         let roleTeam2 = message.guild.roles.cache.find(role => role.name === "team 2");
 
@@ -36,6 +36,7 @@ module.exports = {
                 reason: "Création du rôle pour le draft"
             });
         }
+
         if (!roleTeam2) {
             roleTeam2 = await message.guild.roles.create({
                 name: "team 2",
@@ -48,13 +49,32 @@ module.exports = {
         let team1 = [];
         let team2 = [];
 
-        // Ajoute les capitaines aux rôles correspondants
+        // Détermination du capitaine qui commence aléatoirement
+        const firstCaptain = Math.random() < 0.5 ? captain1 : captain2;
+        const secondCaptain = firstCaptain.id === captain1.id ? captain2 : captain1;
+
+        const captainMap = {
+            1: firstCaptain,
+            2: secondCaptain
+        };
+
+        // Séquence de picks : 1, 2, 2, 1, 1, 2, ...
+        const pickPattern = [1, 2, 2, 1, 1];
+        const pickSequence = [];
+        while (pickSequence.length < members.size) {
+            pickSequence.push(...pickPattern);
+        }
+        pickSequence.length = members.size; // Trim à la bonne taille
+
+        let pickIndex = 0;
+
+        // Ajout des rôles aux capitaines
         await captain1.roles.add(roleTeam1);
         await captain2.roles.add(roleTeam2);
 
         const draftEmbed = new EmbedBuilder()
             .setTitle("🏆 Draft League of Legends")
-            .setDescription(`Les capitaines sont : **${captain1.displayName}** (Team 1) et **${captain2.displayName}** (Team 2)`)
+            .setDescription(`Les capitaines sont : **${captain1.displayName}** (Team 1) et **${captain2.displayName}** (Team 2)\nPremier à choisir : **${firstCaptain.displayName}**`)
             .setColor("#0099ff");
 
         const selectMenu = new StringSelectMenuBuilder()
@@ -65,13 +85,16 @@ module.exports = {
         const row = new ActionRowBuilder().addComponents(selectMenu);
         const draftMessage = await message.channel.send({ embeds: [draftEmbed], components: [row] });
 
-        let currentCaptain = captain1;
-        let turn = 1;
-
-        const filter = (interaction) => interaction.customId === 'draft_select' && interaction.user.id === currentCaptain.id;
-        const collector = message.channel.createMessageComponentCollector({ filter, time: 60000*5 });
+        const collector = message.channel.createMessageComponentCollector({ time: 60000 * 5 });
 
         collector.on('collect', async (interaction) => {
+            const currentCaptainNum = pickSequence[pickIndex];
+            const currentCaptain = captainMap[currentCaptainNum];
+
+            if (interaction.customId !== 'draft_select' || interaction.user.id !== currentCaptain.id) {
+                return interaction.reply({ content: "⛔ Ce n’est pas ton tour de choisir !", ephemeral: true });
+            }
+
             const selectedId = interaction.values[0];
             const selectedPlayer = availablePlayers.find(player => player.value === selectedId);
             const selectedMember = message.guild.members.cache.get(selectedId);
@@ -80,23 +103,24 @@ module.exports = {
             selectMenu.setOptions(availablePlayers);
             row.setComponents(selectMenu);
 
-            if (turn % 2 === 1) {
+            if (currentCaptain.id === captain1.id) {
                 team1.push(selectedPlayer.label);
                 await selectedMember.roles.add(roleTeam1);
-                currentCaptain = captain2;
             } else {
                 team2.push(selectedPlayer.label);
                 await selectedMember.roles.add(roleTeam2);
-                currentCaptain = captain1;
             }
 
-            turn++;
+            pickIndex++;
+
+            const nextCaptainNum = pickSequence[pickIndex];
+            const nextCaptain = nextCaptainNum ? captainMap[nextCaptainNum].displayName : "Aucun (draft terminé)";
 
             const updatedEmbed = new EmbedBuilder()
                 .setTitle("🏆 Draft League of Legends")
-                .setDescription(`Les capitaines sont : **${captain1.displayName}**  (Team 1) et **${captain2.displayName}** (Team 2)`)
+                .setDescription(`Les capitaines sont : **${captain1.displayName}** (Team 1) et **${captain2.displayName}** (Team 2)`)
                 .addFields(
-                    { name: "Tour de :", value: currentCaptain.displayName, inline: false },
+                    { name: "Tour de :", value: nextCaptain, inline: false },
                     { name: "Team 1 🟦", value: team1.length ? team1.join("\n") : "Aucun joueur", inline: true },
                     { name: "Team 2 🟥", value: team2.length ? team2.join("\n") : "Aucun joueur", inline: true }
                 )
